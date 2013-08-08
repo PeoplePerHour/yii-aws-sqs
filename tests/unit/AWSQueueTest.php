@@ -6,7 +6,8 @@ class AWSQueueTest extends CTestCase
      */
     public function testNameValidation()
     {
-        $q = new AWSQueue();
+        $qm = new AWSQueueManager();
+        $q = new AWSQueue($qm);
         $invalidCharacterNames = array(
             'Testing queue', //KO
             'Testing*^quee', //KO
@@ -41,7 +42,8 @@ class AWSQueueTest extends CTestCase
      */
     public function testAttributesValidation()
     {
-        $q = new AWSQueue();
+        $qm = new AWSQueueManager();
+        $q = new AWSQueue($qm);
         $q->name = 'validename';
 
         $q->visibilityTimeout = 43201;

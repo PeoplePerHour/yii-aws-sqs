@@ -99,7 +99,7 @@ class AWSQueueManager extends CApplicationComponent
             if(!empty($list)) {
                 foreach($list->QueueUrl as $qUrl)
                 {
-                    $q = new AWSQueue($qUrl);
+                    $q = new AWSQueue($this, $qUrl);
                     $this->_queues->add($q->name,$q);
                 }
                 unset($list);
@@ -249,7 +249,7 @@ class AWSQueueManager extends CApplicationComponent
     public function create($name)
     {
         if(($r=$this->parseResponse($this->_sqs->create_queue($name)))!==false) {
-            $q=new AWSQueue((string)$r->body->CreateQueueResult->QueueUrl);
+            $q=new AWSQueue($this, (string)$r->body->CreateQueueResult->QueueUrl);
             $this->queues->add($q->name, $q);
             return $q;
         }
