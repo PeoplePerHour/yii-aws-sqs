@@ -94,13 +94,15 @@ class AWSQueueManager extends CApplicationComponent
             $this->_queues = new AWSQueueList();
             $this->_queues->caseSensitive = true;
             $response = $this->parseResponse($this->_sqs->list_queues());
-
-            if(!empty($response->body->ListQueuesResult)) {
-                foreach($response->body->ListQueuesResult->QueueUrl as $qUrl)
+            
+            $list = (isset($response->body->queueUrls)) ? $response->body->queueUrls : $response->body->ListQueuesResult;
+            if(!empty($list)) {
+                foreach($list->QueueUrl as $qUrl)
                 {
-                    $q = new AWSQueue($qUrl);
+                    $q = new AWSQueue($this, $qUrl);
                     $this->_queues->add($q->name,$q);
                 }
+                unset($list);
             }
         }
         return $this->_queues;
@@ -247,7 +249,7 @@ class AWSQueueManager extends CApplicationComponent
     public function create($name)
     {
         if(($r=$this->parseResponse($this->_sqs->create_queue($name)))!==false) {
-            $q=new AWSQueue((string)$r->body->CreateQueueResult->QueueUrl);
+            $q=new AWSQueue($this, (string)$r->body->CreateQueueResult->QueueUrl);
             $this->queues->add($q->name, $q);
             return $q;
         }
