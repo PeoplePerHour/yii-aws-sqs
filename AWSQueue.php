@@ -7,7 +7,7 @@ class AWSQueue extends CModel
     /*
      * @var AWSQueueManager
      */
-    private static $sqs;
+    private $_sqs;
 
     /**
      * @var string name of the queue accepts letter, numbers, - and _
@@ -19,8 +19,10 @@ class AWSQueue extends CModel
      */
     private $_url;
 
-    public function __construct($url=null)
+    public function __construct(AWSQueueManager $queueManager, $url=null)
     {
+        $this->_sqs = $queueManager;
+
         if($url!==null)
             $this->url = $url;
     }
@@ -67,15 +69,10 @@ class AWSQueue extends CModel
      */
     private function sqs()
     {
-        if(self::$sqs!==null)
-            return self::$sqs;
-        else {
-            self::$sqs=Yii::app()->sqs;
-            if(self::$sqs instanceof AWSQueueManager)
-                return self::$sqs;
-            else
-                throw new CException(Yii::t('yii','AWSQueue requires a "sqs" AWSQueueManager application component.'));
-        }
+        if($this->_sqs instanceof AWSQueueManager)
+            return $this->_sqs;
+        else
+            throw new CException(Yii::t('yii','AWSQueue requires a "sqs" AWSQueueManager application component.'));
     }
 
     /**
