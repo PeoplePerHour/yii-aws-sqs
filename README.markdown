@@ -1,23 +1,23 @@
 yii-aws-sqs
 ===========
 
-AWS Simple Queue Service component for the yii framework version 0.1
+AWS Simple Queue Service component for the yii framework version 0.1 and AWS SDK version 2.
 
 ##Requirements
 
 1. [Yii 1.1.0 and greater](http://yiiframework.com/download/)
-2. [Amazon sdk for php](https://github.com/amazonwebservices/aws-sdk-for-php)
+2. [Amazon SDK for PHP 2](https://github.com/aws/aws-sdk-php)
 
-##Installation 
+##Installation
 Get a copy extensions on your codebase, preferably added a git submodule with the following way:
 
-        $ git submodule add https://github.com/dmtrs/yii-aws-sqs.git extensions/yii-aws-sqs
+        $ git submodule add https://github.com/PeoplePerHour/yii-aws-sqs.git extensions/yii-aws-sqs
 
 
 Copy file under extensions ( or folder of your choice ) and import it in your config file
 
 ``` php
-<?php 
+<?php
 return array(
     ...
     'import' => array(
@@ -32,7 +32,7 @@ return array(
 Also, config component in your config file:
 
 ``` php
-<?php 
+<?php
 return array(
     ...
     'components' => array(
@@ -47,12 +47,13 @@ return array(
 );
 ```
 
-(Need to be fixed) Download the amazon sdk for php (check requirements) and include it in your `index.php`. Something ugly like:
+Install the Amazon SDK for PHP 2 and ensure the autoloader is in your `index.php`. For example if you installed the SDK using composer, in your `index.php` you'd have:
 
 ``` php
 <?php
     ...
-    require_once $dir . '/../lib/aws-sdk-php/sdk.class.php';
+    // Autoload the libraries included by composer (e.g. AWS SDK v2)
+    include_once __DIR__.'/../vendor/autoload.php';
     ...
 ?>
 ```
@@ -68,15 +69,15 @@ In order you want to run test:
 <?php
 ....
 define('SQS_ACCESS_KEY', 'KJGVJRHJ24v...');
-define('SQS_SECRET_KEY', 'KJGVJRHJ24v...');
+define('SQS_SECRET_KEY', '6p2dnWQF3g1...');
 ...
 ?>
 ```
-3. Run the test. Example: 
+3. Run the test. Example:
 
 ```
-    phpunit ../extensions/yii-aws-sqs/test/unit/
-``` 
+    phpunit ../extensions/yii-aws-sqs/tests/unit/
+```
 
 ##Examples
 
@@ -93,9 +94,9 @@ In order to get a list of queues access the property `AWSQueueManager::$queues` 
 
 A queue can be accessed either from the queues object either from the sqs object. Like:
 
-``` php 
-<?php 
-    Yii::app()->sqs->queues->myTestQueue; // is equal to 
+``` php
+<?php
+    Yii::app()->sqs->queues->myTestQueue; // is equal to
     Yii::app()->sqs->myTestQueue;
 ```
 
@@ -106,6 +107,6 @@ Creating a queue is easy
     if(($newQueue=Yii::app()->sqs->create('myTestingQueue'))!==null) {
         $newQueue->send('message');//Sending a message, see later for instructions
     }
-``` 
+```
 
 [![githalytics.com alpha](https://cruel-carlota.pagodabox.com/226c74050760aa30915ae903c7c32c4c "githalytics.com")](http://githalytics.com/dmtrs/yii-aws-sqs)

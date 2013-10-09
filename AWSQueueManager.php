@@ -1,5 +1,6 @@
 <?php
 Yii::import('ext.yii-aws-sqs.*');
+
 /**
  * AWSQueueManager
  */
@@ -16,6 +17,11 @@ class AWSQueueManager extends CApplicationComponent
     public $secretKey;
 
     /**
+     * @var string The AWS region where this SQS account lives
+     */
+    public $region;
+
+    /**
      * @var AmazonSQS
      */
     private $_sqs;
@@ -26,19 +32,7 @@ class AWSQueueManager extends CApplicationComponent
     private $_queues;
 
     /**
-     * @var string last request id
-     * @see AWSQueueManager::getLastRequestId()
-     */
-    private $_lastRequestId;
-
-    /**
-     * @var array last error
-     */
-    private $_errors=array();
-
-    /**
-     * The prefix to add to the table
-     * @var string prefix
+     * @var string Optional prefix to add to the queue name.
      */
     public $tablePrefix;
 
@@ -50,10 +44,17 @@ class AWSQueueManager extends CApplicationComponent
         if($this->accessKey===null || $this->secretKey===null)
             throw new CException(__CLASS__.' $accessKey and $secretKey must be set');
 
-        $this->_sqs = new AmazonSQS(array(
+        if ($this->region === null) {
+            $this->region = 'us-east-1'; // set default, so don't need any config for normal case.
+        }
+
+        $this->_sqs = Aws\Sqs\SqsClient::factory(array(
             'key'    => $this->accessKey,
-            'secret' => $this->secretKey
+            'secret' => $this->secretKey,
+            'region' => $this->region,
+            'credentials.cache' => true  // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
         ));
+
         parent::init();
     }
 
@@ -70,22 +71,6 @@ class AWSQueueManager extends CApplicationComponent
     }
 
     /**
-     * @return array error details
-     */
-    public function getErrors()
-    {
-        return $this->_errors;
-    }
-
-    /**
-     * @var string last request id
-     */
-    public function getLastRequestId()
-    {
-        return $this->_lastRequestId;
-    }
-
-    /**
      * @return CList queues list
      */
     public function getQueues($refresh=false)
@@ -93,11 +78,11 @@ class AWSQueueManager extends CApplicationComponent
         if($this->_queues===null || $refresh) {
             $this->_queues = new AWSQueueList();
             $this->_queues->caseSensitive = true;
-            $response = $this->parseResponse($this->_sqs->list_queues());
-            
-            $list = (isset($response->body->queueUrls)) ? $response->body->queueUrls : $response->body->ListQueuesResult;
+
+            $result = $this->_sqs->listQueues();
+            $list = $result->get('QueueUrls');
             if(!empty($list)) {
-                foreach($list->QueueUrl as $qUrl)
+                foreach($list as $qUrl)
                 {
                     $q = new AWSQueue($this, $qUrl);
                     $this->_queues->add($q->name,$q);
@@ -116,7 +101,12 @@ class AWSQueueManager extends CApplicationComponent
      */
     public function send($url, $message, $options=array())
     {
-        return (($r=$this->parseResponse($this->_sqs->send_message($url, $message, $options)))!==false);
+        $this->_sqs->sendMessage(array_merge(array(
+            'QueueUrl'    => $url,
+            'MessageBody' => $message,
+        ),$options));
+
+        return true; // If delete failed the above would throw an exception
     }
 
     /**
@@ -127,7 +117,7 @@ class AWSQueueManager extends CApplicationComponent
      * @param string $url          url of the queue to send message
      * @param string $messageArray message to send
      * @param array  $options      extra options for the message
-     * @return boolean message was succesfull
+     * @return boolean message was successful
      */
     public function sendBatch($url, $messageArray, $options=array())
     {
@@ -142,7 +132,14 @@ class AWSQueueManager extends CApplicationComponent
                     'MessageBody' => (string)$message,
                 );
             }
-            $r=$r&&($this->parseResponse($this->_sqs->send_message_Batch($url, $messages, $options))!==false);
+            $result = $this->_sqs->sendMessageBatch(array_merge(array(
+                'QueueUrl' => $url,
+                'Entries'  => $messages,
+            ),$options));
+
+            $fails = $result->get('Failed');
+
+            $r=$r&&!$fails;
         }
         return $r;
     }
@@ -150,7 +147,7 @@ class AWSQueueManager extends CApplicationComponent
     /**
      * Receive messages from the queue
      * If there is no message returned then this function returns null.
-     * In case of one message then a AWSMessage is returned for convienience, if more
+     * In case of one message then a AWSMessage is returned for convenience, if more
      * then an array of AWSMessage objects is returned.
      *
      * @param string $url     url of the queue to send message
@@ -160,27 +157,33 @@ class AWSQueueManager extends CApplicationComponent
     public function receive($url, $options=array())
     {
         $msgs=array();
-        if(($r=$this->parseResponse($this->_sqs->receive_message($url, $options)))!==false) {
-            if(!empty($r->body->ReceiveMessageResult)) {
-                foreach($r->body->ReceiveMessageResult->Message as $message)
-                {
-                    $m = new AWSMessage();
-                    $m->body          = (string)$message->Body;
-                    $m->md5           = (string)$message->MD5OfBody;
-                    $m->id            = (string)$message->MessageId;
-                    $m->receiptHandle = (string)$message->ReceiptHandle;
-                    foreach ($message->Attribute as $value) {
-                        $name = lcfirst((string)$value->Name);
-                        $value = (string)$value->Value;
+
+        $result = $this->_sqs->receiveMessage(array_merge(array(
+            'QueueUrl' => $url,
+        ),$options));
+
+        $hasMsg = ($result['Messages'] !== null);
+
+        if ($hasMsg) {
+            foreach ($result['Messages'] as $message) {
+                $m = new AWSMessage();
+                $m->id            = (string)$message['MessageId'];
+                $m->body          = (string)$message['Body'];
+                $m->md5           = (string)$message['MD5OfBody'];
+                $m->receiptHandle = (string)$message['ReceiptHandle'];
+                if (isset($message['Attributes'])) {
+                    foreach ($message['Attributes'] as $value) {
+                        $name = lcfirst((string)$value['Name']);
+                        $value = (string)$value['Value'];
                         if(in_array($name, $m->attributeNames())){
                             $m->$name = $value;
                         }
-
                     }
-                    $msgs[]=$m;
                 }
+                $msgs[]=$m;
             }
         }
+
         if(isset($options['MaxNumberOfMessages'])){
             return $msgs;
         } else {
@@ -197,9 +200,14 @@ class AWSQueueManager extends CApplicationComponent
      */
     public function delete($url, $handle, $options=array())
     {
-        $receiptHandle = ($handle instanceof AWSMessage) ? $handle->receiptHandle : $handle;
-        return (($r=$this->parseResponse($this->_sqs->delete_message($url, $receiptHandle, $options)))!==false);
+        $this->_sqs->deleteMessage(array_merge(array(
+            'QueueUrl'    => $url,
+            'ReceiptHandle' => $handle,
+        ),$options));
+
+        return true; // If delete failed the above would throw an exception
     }
+
     /**
      * Deletes a batch of messages
      * @param type $url The url of the queue
@@ -216,43 +224,36 @@ class AWSQueueManager extends CApplicationComponent
             array_push($deleteRequest, $req);
         }
 
-        return (($r=$this->parseResponse($this->_sqs->delete_message_batch($url, $deleteRequest, $options)))!==false);
+        $result = $this->_sqs->deleteMessageBatch(array_merge(array(
+            'QueueUrl' => $url,
+            'Entries'  => $deleteRequest,
+        ),$options));
+
+        $fails = $result->get('Failed');
+        return empty($fails);
     }
 
     /**
-     * Parse response to get the last request id, check for errrors
+     * Create a new queue
      *
-     * @param CFResponse response object to parse
-     * @return array
-     */
-    private function parseResponse($response)
-    {
-        $this->_errors=array();
-        $this->_lastRequestId = (string)$response->body->ResponseMetadata->RequestId;
-
-        if($response->isOK()) {
-            return $response;
-        } else {
-            $this->_errors = array(
-                'id'      => (string)$response->body->RequestId,
-                'code'    => (string)$response->body->Error->Code,
-                'message' => (string)$response->body->Error->Message,
-            );
-            Yii::log(implode(' - ', array_values($this->_errors)),'error','ext.sqs');
-        }
-        return false;
-    }
-
-    /**
      * @return mixed AWSQueue object if creation was succesfull, null else
      */
-    public function create($name)
+    public function createQueue($name)
     {
-        if(($r=$this->parseResponse($this->_sqs->create_queue($name)))!==false) {
-            $q=new AWSQueue($this, (string)$r->body->CreateQueueResult->QueueUrl);
-            $this->queues->add($q->name, $q);
-            return $q;
-        }
-        return null;
+        $result = $this->_sqs->createQueue(array('QueueName' => $name));
+        $queueUrl = $result->get('QueueUrl');
+
+        $q=new AWSQueue($this, $queueUrl);
+        $this->queues->add($q->name, $q);
+        return $q;
+    }
+
+    /**
+     * Delete a queue
+     */
+    public function deleteQueue($url)
+    {
+        $this->_sqs->deleteQueue(array('QueueUrl' => $url));
+        return true; // If delete failed the above would throw an exception
     }
 }
