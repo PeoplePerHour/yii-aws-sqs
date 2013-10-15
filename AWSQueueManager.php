@@ -172,9 +172,9 @@ class AWSQueueManager extends CApplicationComponent
                 $m->md5           = (string)$message['MD5OfBody'];
                 $m->receiptHandle = (string)$message['ReceiptHandle'];
                 if (isset($message['Attributes'])) {
-                    foreach ($message['Attributes'] as $value) {
-                        $name = lcfirst((string)$value['Name']);
-                        $value = (string)$value['Value'];
+                    foreach ($message['Attributes'] as $name=>$value) {
+                        $name = lcfirst((string)$name);
+                        $value = (string)$value;
                         if(in_array($name, $m->attributeNames())){
                             $m->$name = $value;
                         }
