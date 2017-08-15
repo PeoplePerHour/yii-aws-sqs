@@ -22,6 +22,11 @@ class AWSQueueManager extends CApplicationComponent
     public $region;
 
     /**
+     * @var string The version of the SQS API to use
+     */
+    public $version = '2012-11-05';
+
+    /**
      * @var AmazonSQS
      */
     private $_sqs;
@@ -48,12 +53,15 @@ class AWSQueueManager extends CApplicationComponent
             $this->region = 'us-east-1'; // set default, so don't need any config for normal case.
         }
 
-        $this->_sqs = Aws\Sqs\SqsClient::factory(array(
-            'key'    => $this->accessKey,
-            'secret' => $this->secretKey,
-            'region' => $this->region,
+        $this->_sqs = new Aws\Sqs\SqsClient([
+            'version' => $this->version,
+            'region'  => $this->region,
+            'credentials' => [
+                'key'    => $this->accessKey,
+                'secret' => $this->secretKey,
+            ],
             'credentials.cache' => false // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
-        ));
+        ]);
 
         parent::init();
     }

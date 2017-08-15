@@ -1,12 +1,12 @@
 yii-aws-sqs
 ===========
 
-AWS Simple Queue Service component for the yii framework version 0.1 and AWS SDK version 2.
+AWS Simple Queue Service component for the yii framework version 0.1 and AWS SDK version 3.
 
 ##Requirements
 
 1. [Yii 1.1.0 and greater](http://yiiframework.com/download/)
-2. [Amazon SDK for PHP 2](https://github.com/aws/aws-sdk-php)
+2. [Amazon SDK for PHP 3](https://github.com/aws/aws-sdk-php)
 
 ##Installation
 Get a copy extensions on your codebase, preferably added a git submodule with the following way:
