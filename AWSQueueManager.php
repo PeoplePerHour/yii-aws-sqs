@@ -66,7 +66,7 @@ class AWSQueueManager extends CApplicationComponent
                 'secret' => $this->secretKey,
             ],
             'endpoint' => $this->localEndpoint,
-            'credentials.cache' => false, // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
+            'credentials.cache' => false // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
         ]);
 
         parent::init();
