@@ -27,6 +27,11 @@ class AWSQueueManager extends CApplicationComponent
     public $version = '2012-11-05';
 
     /**
+     * @var string The local endpoint for SQS
+     */
+    public $localEndpoint;
+
+    /**
      * @var AmazonSQS
      */
     private $_sqs;
@@ -60,7 +65,8 @@ class AWSQueueManager extends CApplicationComponent
                 'key'    => $this->accessKey,
                 'secret' => $this->secretKey,
             ],
-            'credentials.cache' => false // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
+            'endpoint' => $this->localEndpoint,
+            'credentials.cache' => false, // Utilize the Doctrine Cache PHP library to cache credentials with APC. Avoids the cost of sending an HTTP request to the IMDS each time the SDK is utilized.
         ]);
 
         parent::init();
