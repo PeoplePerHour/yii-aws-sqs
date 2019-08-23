@@ -108,17 +108,23 @@ class AWSQueueManager extends CApplicationComponent
     }
 
     /**
+     * Important Note: If the SQS queue is FIFO type we MUST send the MessageGroupId also,
+     * otherwise the request will fail.
+     * @link https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html
+     *
+     * Define if the SQS queue is a FIFO one via passing the `MessageGroupId` on $options param.
+     *
      * @param string $url     url of the queue to send message
      * @param string $message message to send
      * @param array  $options extra options for the message
      * @return boolean message was succesfull
      */
-    public function send($url, $message, $options=array())
+    public function send($url, $message, $options= [])
     {
-        $this->_sqs->sendMessage(array_merge(array(
+        $this->_sqs->sendMessage(array_merge([
             'QueueUrl'    => $url,
             'MessageBody' => $message,
-        ),$options));
+        ], $options));
 
         return true; // If delete failed the above would throw an exception
     }
@@ -128,28 +134,39 @@ class AWSQueueManager extends CApplicationComponent
      * with a limit of 10 per request. If $messageArray has more than 10 messages
      * then 2 requests will be triggered.
      *
+     * Important Note: If the SQS queue is FIFO type we MUST send the MessageGroupId also,
+     * otherwise the request will fail.
+     * @link https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html
+     *
+     * Define if the SQS queue is a FIFO one via passing the `MessageGroupId` on $options param.
+     *
      * @param string $url          url of the queue to send message
      * @param string $messageArray message to send
      * @param array  $options      extra options for the message
      * @return boolean message was successful
      */
-    public function sendBatch($url, $messageArray, $options=array())
+    public function sendBatch($url, $messageArray, $options= [])
     {
-        $r=true;
-        foreach(array_chunk($messageArray,10) as $batch)
-        {
-            $messages=array();
-            foreach($batch as $i=>$message)
-            {
-                $messages[]=array(
+        $r = true;
+        foreach(array_chunk($messageArray,10) as $batch) {
+            $messages= [];
+            foreach($batch as $i=>$message) {
+
+                $messageData = [
                     'Id'          => $i,
                     'MessageBody' => (string)$message,
-                );
+                ];
+
+                if (isset($options['MessageGroupId'])) {
+                    $messageData['MessageGroupId'] = $options['MessageGroupId'];
+                }
+
+                $messages[]= $messageData;
             }
-            $result = $this->_sqs->sendMessageBatch(array_merge(array(
+            $result = $this->_sqs->sendMessageBatch(array_merge([
                 'QueueUrl' => $url,
                 'Entries'  => $messages,
-            ),$options));
+            ],$options));
 
             $fails = $result->get('Failed');
 
