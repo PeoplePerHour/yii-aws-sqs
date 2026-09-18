@@ -13,7 +13,10 @@ class AWSQueueTest extends CTestCase
         // Allow us to set a private variable for this test
         $class = new ReflectionClass($q);
         $property = $class->getProperty('_name');
-        $property->setAccessible(true);
+        // PHP 7.4 needs explicit access; PHP 8.1+ allows reflection access by default.
+        if (PHP_VERSION_ID < 80100) {
+            $property->setAccessible(true);
+        }
 
         $this->markTestSkipped('Skipped because we didn\'t implement queue name validation yet');
 
@@ -47,7 +50,7 @@ class AWSQueueTest extends CTestCase
     }
 
     /**
-     * Test rest of the attributes
+     * Test the remaining attributes
      */
     public function testAttributesValidation()
     {
@@ -57,7 +60,10 @@ class AWSQueueTest extends CTestCase
         // Allow us to set a private variable for this test
         $class = new ReflectionClass($q);
         $property = $class->getProperty('_name');
-        $property->setAccessible(true);
+        // PHP 7.4 needs explicit access; PHP 8.1+ allows reflection access by default.
+        if (PHP_VERSION_ID < 80100) {
+            $property->setAccessible(true);
+        }
         $property->setValue($q, 'validname'); // equivalent to $q->name='validname';
 
         $this->markTestSkipped('Skipped because we didn\'t implement name validation or queue attributes yet');

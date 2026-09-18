@@ -83,7 +83,7 @@ class AWSQueue extends CModel
     public function send($message, $options=array())
     {
         if($this->_url!==null)
-            return (boolean)$this->sqs()->send($this->url, (string)$message, $options);
+            return (bool)$this->sqs()->send($this->url, (string)$message, $options);
 
         return false;
     }
@@ -110,14 +110,14 @@ class AWSQueue extends CModel
     public function delete($handle, $options=array())
     {
         if($this->_url!==null)
-            return (boolean)$this->sqs()->delete($this->_url, $handle, $options);
+            return (bool)$this->sqs()->delete($this->_url, $handle, $options);
 
         return false;
     }
 
     public function deleteBatch($handles, $options = array()){
         if($this->_url!==null)
-            return (boolean)$this->sqs()->deleteBatch($this->_url, $handles, $options);
+            return (bool)$this->sqs()->deleteBatch($this->_url, $handles, $options);
 
         return false;
     }
