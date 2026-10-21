@@ -117,7 +117,7 @@ class AWSQueueManager extends CApplicationComponent
      * @param string $url     url of the queue to send message
      * @param string $message message to send
      * @param array  $options extra options for the message
-     * @return boolean message was succesfull
+     * @return boolean whether the message was sent successfully
      */
     public function send($url, $message, $options= [])
     {
@@ -153,8 +153,8 @@ class AWSQueueManager extends CApplicationComponent
             foreach($batch as $i=>$message) {
 
                 $messageData = [
-                    'Id'          => $i,
-                    'MessageBody' => (string)$message,
+                    'Id'          => (string) $i,
+                    'MessageBody' => (string) $message,
                 ];
 
                 if (isset($options['MessageGroupId'])) {
@@ -178,8 +178,8 @@ class AWSQueueManager extends CApplicationComponent
     /**
      * Receive messages from the queue
      * If there is no message returned then this function returns null.
-     * In case of one message then a AWSMessage is returned for convenience, if more
-     * then an array of AWSMessage objects is returned.
+     * If there is one message, an AWSMessage is returned for convenience;
+     * otherwise, an array of AWSMessage objects is returned.
      *
      * @param string $url     url of the queue to send message
      * @param array  $options extra options for the message
@@ -227,7 +227,7 @@ class AWSQueueManager extends CApplicationComponent
      *
      * @param string $url           url of the queue
      * @param mixed  $receiptHandle AWSMessage contain the receiptHandle or the receipthandle for the message
-     * @return boolean if message was delete succesfull
+     * @return boolean whether the message was deleted successfully
      */
     public function delete($url, $handle, $options=array())
     {
@@ -244,14 +244,14 @@ class AWSQueueManager extends CApplicationComponent
      * @param type $url The url of the queue
      * @param array $handles An array of messages or handles to delete
      * @param type $options
-     * @return boolean if the delete was sucessful or not
+     * @return boolean whether the deletion was successful
      */
     public function deleteBatch($url, $handles, $options=array())
     {
         $deleteRequest = array();
         foreach ($handles as $key => $handle) {
             $receiptHandle = ($handle instanceof AWSMessage) ? $handle->receiptHandle : $handle;
-            $req = array('Id'=>$key,'ReceiptHandle'=>$receiptHandle);
+            $req = array('Id'=>(string) $key,'ReceiptHandle'=>$receiptHandle);
             array_push($deleteRequest, $req);
         }
 
@@ -267,7 +267,7 @@ class AWSQueueManager extends CApplicationComponent
     /**
      * Create a new queue
      *
-     * @return mixed AWSQueue object if creation was succesfull, null else
+     * @return mixed AWSQueue object if creation was successful, otherwise null
      */
     public function createQueue($name)
     {
